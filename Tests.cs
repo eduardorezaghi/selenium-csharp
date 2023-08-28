@@ -8,13 +8,13 @@ using SeleniumCSharp.utils;
 
 namespace SeleniumCSharp;
 
-public class Tests : IClassFixture<FirefoxDriverFixture>
+public class Tests : IClassFixture<ChromeDriverFixture>
 {
-    private FirefoxDriver driver;
+    private IWebDriver driver;
     private LoginPage loginPage;
 
 
-    public Tests(FirefoxDriverFixture fixture) {
+    public Tests(ChromeDriverFixture fixture) {
         // Arrange
         driver = fixture.webDriver;
         loginPage = new LoginPage(driver);
@@ -29,7 +29,8 @@ public class Tests : IClassFixture<FirefoxDriverFixture>
 
         loginPage.EnterText(LoginPageLocators.UsernameInput, loginPage.username);
         loginPage.EnterText(LoginPageLocators.PasswordInput, loginPage.password);
-        driver.FindElement(LoginPageLocators.PasswordInput).GetAttribute("value").Should().Be("PilotSky@456");
+        driver.FindElement(LoginPageLocators.PasswordInput)
+            .GetAttribute("value").Should().Be(loginPage.password);
         loginPage.ClickElement(LoginPageLocators.LoginButton);
     }
 
@@ -37,10 +38,10 @@ public class Tests : IClassFixture<FirefoxDriverFixture>
     public void HTML5PluginTest() {
         this.LoginTest();
 
-        IWebElement divElement = driver.FindElement(By.ClassName("divTextoPrincipal"));
-        if (divElement.Text.Contains("Your password will expire")) {
-            loginPage.ClickElement(LoginPageLocators.btnNoModifyPassword);
-        }
+        // IWebElement divElement = driver.FindElement(By.ClassName("divTextoPrincipal"));
+        // if (divElement.Text.Contains("Your password will expire")) {
+        //     loginPage.ClickElement(LoginPageLocators.btnNoModifyPassword);
+        // }
 
         loginPage.SelectByValue(LoginPageLocators.SelectPlugin, "2268453f-c7f9-4184-9416-37eb8adc8f5a");
         driver.FindElement(LoginPageLocators.SelectPlugin)
@@ -50,17 +51,34 @@ public class Tests : IClassFixture<FirefoxDriverFixture>
 
 
         IWebElement chooseVirtualizerMessage = driver.FindElement(By.ClassName("chooseVirtualizerMessage"));
-        if (chooseVirtualizerMessage.GetAttribute("innerText").Contains("Choose")) {
+        if (chooseVirtualizerMessage.GetAttribute("innerText").Contains("Escolha")) {
             loginPage.ClickElement(LoginPageLocators.btnHTML5Virtualizer);
         }
 
         // Add a wait here to wait for the canvas to load
         driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(60);
 
-
         IWebElement canvas = driver.FindElement(LoginPageLocators.canvasApplications);
-        Thread.Sleep(10000);
         canvas.Displayed.Should().BeTrue();
     }
 
+    [Fact]
+    public void networkTest() {
+        var handler = new NetworkResponseHandler();
+        handler.ResponseMatcher = httpresponse => true;
+
+        INetwork networkInterceptor = driver.Manage().Network;
+
+        networkInterceptor.AddResponseHandler(handler);
+        networkInterceptor.StartMonitoring().Wait();
+        driver.Navigate().GoToUrl("https://piloto.skyinone.net/user");
+        loginPage.EnterText(LoginPageLocators.UsernameInput, loginPage.username);
+        loginPage.EnterText(LoginPageLocators.PasswordInput, loginPage.password);
+        loginPage.ClickElement(LoginPageLocators.LoginButton);
+        networkInterceptor.StopMonitoring().Wait();
+    }
+
+    [Fact]
+    public void TestOpenNotepad() {
+    }
 }
